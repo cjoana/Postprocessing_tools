@@ -124,24 +124,22 @@ for key in level_attrb.keys():
     l0.attrs[key] = level_attrb[key]
 sl0 = l0.create_group('data_attributes')
 dadt = np.dtype([('intvecti', '<i4'), ('intvectj', '<i4'), ('intvectk', '<i4')])
-sl0.attrs['ghost'] = np.array( (3, 3, 3),  dtype=dadt)
+sl0.attrs['ghost'] = np.array((3, 3, 3),  dtype=dadt)
 sl0.attrs['outputGhost'] = np.array( (0, 0, 0),  dtype=dadt)
-sl0.attrs['comps'] = 35                 #TODO: Check this hardcoded parameters is always the same in GRCHombo
+sl0.attrs['comps'] = base_attrb['num_components']
 sl0.attrs['objectType'] = np.array('FArrayBox', dtype='S10')
 
 # level datasets
-dataset = np.zeros( (base_attrb['num_components'], N, N, N))
+dataset = np.zeros((base_attrb['num_components'], N, N, N))
 for i, comp in enumerate(component_names):
     if comp in dset.keys():
         dataset[i] = dset[comp].T
-fdset=[]
+fdset = []
 for c in range(base_attrb['num_components']):
     fc = dataset[c].T.flatten()
     fdset.extend(fc)
 fdset = np.array(fdset)
 
-box_dt = np.dtype([('lo_i', '<i4'), ('lo_j', '<i4'), ('lo_k', '<i4'), ('hi_i', '<i4'),
-                ('hi_j', '<i4'), ('hi_k', '<i4')])
 l0.create_dataset("Processors", data=np.array([0]))
 l0.create_dataset("boxes",  data=boxes)
 l0.create_dataset("data:offsets=0",  data=np.array([0, (base_attrb['num_components'])*N**3]))
