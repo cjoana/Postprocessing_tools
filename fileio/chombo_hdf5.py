@@ -3,12 +3,17 @@ import h5py as h5
 import numpy as np
 import os
 
+"""
+SET PARAMETERS
+"""
+
+filename = "temp.3d.hdf5"  # Name of the new file to create
 
 N = 128
 L = 128000
 
-# def base attributes
-component_names = [  # The order is important: component_0 ... component_nth
+# Set components
+component_names = [  # The order is important: component_0 ... component_(nth-1)
     'chi',
     'h11',
     'h12',
@@ -45,6 +50,19 @@ component_names = [  # The order is important: component_0 ... component_nth
     'Mom2',
     'Mom3'
 ]
+temp_comp = np.zeros((N, N, N))    # template for components: array [Nx, Ny. Nz]
+dset = dict()
+# Here set the value of the components (default: to zero)
+dset['lapse'] = temp_comp + 1.
+dset['h11'] = temp_comp + 1.
+dset['h22'] = temp_comp + 1.
+dset['h33'] = temp_comp + 1.
+dset['K'] = temp_comp + -5.94450679035e-06
+dset['chi'] = temp_comp + 1.
+dset['phi'] = temp_comp + 1.
+
+
+# def base attributes
 base_attrb = dict()
 base_attrb['time'] = 0.0
 base_attrb['iteration'] = 0
@@ -62,48 +80,34 @@ for comp,  name in enumerate(component_names):
 # def Chombo_global attributes
 chombogloba_attrb = dict()
 chombogloba_attrb['testReal'] = 0.0
-chombogloba_attrb['SpaceDim']= 3
-
+chombogloba_attrb['SpaceDim'] = 3
 
 # def level0 attributes
 level_attrb = dict()
-level_attrb['dt']=  250.0
-level_attrb['dx']=  1000.0
-level_attrb['time']=  0.0
-level_attrb['is_periodic_0']=  1
-level_attrb['is_periodic_1']=  1
-level_attrb['is_periodic_2']=  1
-level_attrb['ref_ratio']=  2
-level_attrb['tag_buffer_size']=  3
-prob_dom = (0, 0, 0, 127, 127, 127)
+level_attrb['dt'] = 250.0
+level_attrb['dx'] = float(L)/N
+level_attrb['time'] = 0.0
+level_attrb['is_periodic_0'] = 1
+level_attrb['is_periodic_1'] = 1
+level_attrb['is_periodic_2'] = 1
+level_attrb['ref_ratio']= 2
+level_attrb['tag_buffer_size'] = 3
+prob_dom = (0, 0, 0, N-1, N-1, N-1)
 prob_dt = np.dtype([('lo_i', '<i4'), ('lo_j', '<i4'), ('lo_k', '<i4'),
                     ('hi_i', '<i4'), ('hi_j', '<i4'), ('hi_k', '<i4')])
 level_attrb['prob_domain']=  np.array(prob_dom, dtype=prob_dt)
-
-
-# set dataset
-temp_comp = np.zeros( (N, N, N))
-dset=dict()
-dset['lapse'] = temp_comp + 1.
-dset['h11'] = temp_comp + 1.
-dset['h22'] = temp_comp + 1.
-dset['h33'] = temp_comp + 1.
-dset['K'] = temp_comp + -5.94450679035e-06
-dset['chi'] = temp_comp + 1.
-dset['phi'] = temp_comp + 1.
-
-boxes = np.array([(0, 0, 0, 127, 127, 127)],
+boxes = np.array([(0, 0, 0, N-1, N-1, N-1)],
       dtype=[('lo_i', '<i4'), ('lo_j', '<i4'), ('lo_k', '<i4'), ('hi_i', '<i4'), ('hi_j', '<i4'), ('hi_k', '<i4')])
 
 
 """"
-Prodution
+CREATE HDF5
 """
 
-if os.path.exists("temp.3d.hdf5"):
-    os.remove("temp.3d.hdf5")
+if os.path.exists(filename):
+    os.remove(filename)
 
-h5file = h5.File('temp.3d.hdf5','w')  # New hdf5 file I want to create
+h5file = h5.File(filename, 'w')  # New hdf5 file I want to create
 
 # base attributes
 for key in base_attrb.keys():
@@ -120,9 +124,9 @@ for key in level_attrb.keys():
     l0.attrs[key] = level_attrb[key]
 sl0 = l0.create_group('data_attributes')
 dadt = np.dtype([('intvecti', '<i4'), ('intvectj', '<i4'), ('intvectk', '<i4')])
-sl0.attrs['ghost'] = np.array( (3, 3, 3),  dtype = dadt)
-sl0.attrs['outputGhost'] = np.array( (0, 0, 0),  dtype = dadt)
-sl0.attrs['comps'] = 35
+sl0.attrs['ghost'] = np.array( (3, 3, 3),  dtype=dadt)
+sl0.attrs['outputGhost'] = np.array( (0, 0, 0),  dtype=dadt)
+sl0.attrs['comps'] = 35                 #TODO: Check this hardcoded parameters is always the same in GRCHombo
 sl0.attrs['objectType'] = np.array('FArrayBox', dtype='S10')
 
 # level datasets
@@ -139,12 +143,9 @@ fdset = np.array(fdset)
 box_dt = np.dtype([('lo_i', '<i4'), ('lo_j', '<i4'), ('lo_k', '<i4'), ('hi_i', '<i4'),
                 ('hi_j', '<i4'), ('hi_k', '<i4')])
 l0.create_dataset("Processors", data=np.array([0]))
-l0.create_dataset("boxes",  data= boxes )
+l0.create_dataset("boxes",  data=boxes)
 l0.create_dataset("data:offsets=0",  data=np.array([0, (base_attrb['num_components'])*N**3]))
 l0.create_dataset("data:datatype=0",  data=fdset)
-
-
-
 
 h5file.close()
 
